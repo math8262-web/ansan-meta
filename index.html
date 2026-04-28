@@ -162,7 +162,7 @@
             const bounds = new maplibregl.LngLatBounds();
             bounds.extend([players[1].pos.lng, players[1].pos.lat]);
             bounds.extend([players[2].pos.lng, players[2].pos.lat]);
-            map.fitBounds(bounds, { padding: 100, maxZoom: 17, duration: 300 });
+            map.fitBounds(bounds, { padding: 120, maxZoom: 18, duration: 300 });
 
             checkQuizDistance();
         });
