@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 마커 수정본</title>
+    <title>안산 3D 실시간 메타버스 - 완벽 3D 마커</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -23,17 +23,54 @@
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* [추가] 3D 역피라미드 마커 스타일 */
-        .m-wrap { width: 30px; height: 30px; display: flex; justify-content: center; }
-        .p-3d { width: 30px; height: 30px; position: relative; transform-style: preserve-3d; animation: p-rot 3s infinite linear; }
-        .p-side { position: absolute; width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-bottom: 30px solid #ff4757; transform-origin: 50% 0%; }
-        .s1 { transform: rotateY(0deg) rotateX(-120deg); border-bottom-color: #ff4757; }
-        .s2 { transform: rotateY(120deg) rotateX(-120deg); border-bottom-color: #ff6b81; }
-        .s3 { transform: rotateY(240deg) rotateX(-120deg); border-bottom-color: #ee5253; }
+        /* 🔥 [수정] 진짜 입체 역피라미드 (완벽 조립) */
+        .m-wrap { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; }
+        
+        /* 3D 렌더링 컨텍스트 설정 */
+        .p-3d-scene {
+            width: 30px; height: 30px;
+            perspective: 1000px; /* 원근감 추가 */
+        }
+
+        .p-3d-body {
+            width: 100%; height: 100%;
+            position: relative;
+            transform-style: preserve-3d; /* 자식 요소의 3D 평면 유지 */
+            animation: p-rot 4s infinite linear; /* 회전 속도 약간 느리게 */
+            transform-origin: center center -15px; /* 꼭짓점을 중심으로 회전하도록 설정 */
+        }
+
+        /* 공통 면 스타일 */
+        .p-side {
+            position: absolute;
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 26px solid red; /* 삼각형 높이 계산값 */
+            opacity: 0.95;
+            transform-origin: 50% 0%; /* 윗변을 기준으로 기울임 */
+        }
+
+        /* 윗면 (뚜껑) - 정삼각형 */
+        .p-base {
+            position: absolute;
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 26px solid #b33939; /* 살짝 어두운 빨간색 */
+            transform: rotateX(-90deg) translateY(-13px); /* 위로 들어올려서 뚜껑으로 만듦 */
+            opacity: 1;
+        }
+
+        /* 옆면 조립 - 정밀한 계산값 적용 */
+        .s1 { transform: rotateY(0deg) translateZ(8.6px) rotateX(19.5deg); border-bottom-color: #ff4d4d; }
+        .s2 { transform: rotateY(120deg) translateZ(8.6px) rotateX(19.5deg); border-bottom-color: #ff6666; }
+        .s3 { transform: rotateY(240deg) translateZ(8.6px) rotateX(19.5deg); border-bottom-color: #ee5253; }
+
         @keyframes p-rot {
-            0% { transform: rotateY(0deg) translateY(0); }
-            50% { transform: rotateY(180deg) translateY(-15px); }
-            100% { transform: rotateY(360deg) translateY(0); }
+            0% { transform: rotateX(10deg) rotateY(0deg) translateY(0); } /* 살짝 기울여서 입체감 강조 */
+            50% { transform: rotateX(10deg) rotateY(180deg) translateY(-10px); } /* 둥둥 뜨는 효과 */
+            100% { transform: rotateX(10deg) rotateY(360deg) translateY(0); }
         }
     </style>
 </head>
@@ -106,7 +143,7 @@
         },
         center: [126.8309, 37.3219],
         zoom: 18,
-        pitch: 60,
+        pitch: 60, /* 지도를 살짝 눕혀서 3D 마커가 더 잘 보이게 설정 */
         antialias: true
     });
 
@@ -128,10 +165,18 @@
                 
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
-                    /* [수정 포인트] 기존 동그라미 마커를 3D 역피라미드로 교체 */
+                    /* [수정] 완벽한 입체 역피라미드 구조물 삽입 */
                     const el = document.createElement("div");
                     el.className = "m-wrap";
-                    el.innerHTML = `<div class="p-3d"><div class="p-side s1"></div><div class="p-side s2"></div><div class="p-side s3"></div></div>`;
+                    el.innerHTML = `
+                        <div class="p-3d-scene">
+                            <div class="p-3d-body">
+                                <div class="p-base"></div> <div class="p-side s1"></div>
+                                <div class="p-side s2"></div>
+                                <div class="p-side s3"></div>
+                            </div>
+                        </div>
+                    `;
                     
                     new maplibregl.Marker({element: el, anchor: 'bottom'})
                         .setLngLat([lng, lat])
