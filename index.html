@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 메타버스 - 긴급 수정</title>
+    <title>안산 3D 메타버스 - 거리 연동형</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -13,7 +13,7 @@
         #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; }
         .player-container { display: flex; flex-direction: column; align-items: center; }
         .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; }
-        .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; background: blue; }
+        .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; }
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; }
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:25px; display:none; z-index:4500; border-radius:15px; width: 280px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -45,10 +45,10 @@
 </div>
 
 <div id="controls">
-    <div class="control-btn" style="grid-column: 2;" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()">▲</div>
-    <div class="control-btn" style="grid-column: 1; grid-row: 2;" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()">◀</div>
-    <div class="control-btn" style="grid-column: 2; grid-row: 2;" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()">▼</div>
-    <div class="control-btn" style="grid-column: 3; grid-row: 2;" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()">▶</div>
+    <div class="control-btn" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()" style="grid-column:2;">▲</div>
+    <div class="control-btn" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()" style="grid-column:1; grid-row:2;">◀</div>
+    <div class="control-btn" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()" style="grid-column:2; grid-row:2;">▼</div>
+    <div class="control-btn" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()" style="grid-column:3; grid-row:2;">▶</div>
 </div>
 
 <div id="map"></div>
@@ -77,7 +77,7 @@
             "sources": { "vworld": { "type": "raster", "tiles": ["https://api.vworld.kr/req/wmts/1.0.0/6665AAE1-38F5-3EB9-B7C6-61D823C0EDD7/Satellite/{z}/{y}/{x}.jpeg"], "tileSize": 256 } },
             "layers": [{ "id": "vworld", "type": "raster", "source": "vworld" }]
         },
-        center: [126.8309, 37.3219], zoom: 17, pitch: 45
+        center: [126.8309, 37.3219], zoom: 17, pitch: 0 // 줌 자동화 시 피치는 0이 안정적입니다
     });
 
     let myId = null, moveInterval = null, currentProblem = null, problems = [];
@@ -90,17 +90,13 @@
         try {
             const res = await fetch(SHEET_URL + "&cb=" + Date.now());
             const text = await res.text();
-            // CSV 줄바꿈 처리 개선
             const rows = text.split("\n").map(row => row.split(",")).filter(row => row.length >= 5);
-            
-            // 첫 줄(제목) 제외하고 반복
             for(let i=1; i<rows.length; i++) {
                 const col = rows[i].map(c => c.replace(/"/g, '').trim());
-                const lng = parseFloat(col[1]);
-                const lat = parseFloat(col[2]);
-
+                const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
                     const el = document.createElement("div");
+                    el.className = "quiz-marker";
                     el.style.width = "20px"; el.style.height = "20px"; el.style.background = "red"; el.style.borderRadius = "50%"; el.style.border = "2px solid white";
                     new maplibregl.Marker(el).setLngLat([lng, lat]).addTo(map);
                     problems.push({ pos: {lng, lat}, q: col[3], a: col[4], done: false });
@@ -108,9 +104,7 @@
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) {
-            document.getElementById('loading-text').innerText = "시트 연결 오류!";
-        }
+        } catch (e) { document.getElementById('loading-text').innerText = "로드 실패!"; }
     }
     fetchQuizzes();
 
@@ -128,6 +122,8 @@
         onValue(ref(db, 'players/'), (snap) => {
             const data = snap.val();
             if(!data) return;
+            
+            // 모든 플레이어 위치 업데이트
             [1, 2].forEach(pId => {
                 if(data[`p${pId}`]) {
                     players[pId].pos = { lng: data[`p${pId}`].lng, lat: data[`p${pId}`].lat };
@@ -136,22 +132,40 @@
                     players[pId].score = data[`p${pId}`].score || 0;
                 }
             });
-            map.setCenter([players[myId].pos.lng, players[myId].pos.lat]);
-            checkQuiz();
+
+            // 지도 자동 줌: 두 플레이어 사이의 거리에 맞춰 축소/확대
+            const bounds = new maplibregl.LngLatBounds();
+            bounds.extend([players[1].pos.lng, players[1].pos.lat]);
+            bounds.extend([players[2].pos.lng, players[2].pos.lat]);
+            map.fitBounds(bounds, { padding: 100, maxZoom: 18, duration: 200 });
+
+            checkQuizDistance();
         });
         document.getElementById('status').innerText = "온라인 연결됨 ✅";
     };
 
-    function checkQuiz() {
-        if(currentProblem) return;
+    function checkQuizDistance() {
+        let isNearAny = false;
         problems.forEach(p => {
-            const d = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
-            if(d < 0.0003 && !p.done) {
+            if(p.done) return;
+            const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
+            
+            if(dist < 0.0003) { // 퀴즈 근처에 있음
+                isNearAny = true;
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
             }
         });
+
+        // 현재 열려있는 퀴즈와 거리가 멀어지면 창 닫기
+        if(currentProblem) {
+            const distToCurrent = Math.sqrt(Math.pow(players[myId].pos.lng - currentProblem.pos.lng, 2) + Math.pow(players[myId].pos.lat - currentProblem.pos.lat, 2));
+            if(distToCurrent >= 0.0003) {
+                document.getElementById("quiz-box").style.display = "none";
+                currentProblem = null;
+            }
+        }
     }
 
     window.submitAnswer = function() {
@@ -164,7 +178,7 @@
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
         } else {
-            alert(`오답!\n입력: ${input}\n정답: ${correct}`);
+            alert(`오답! (정답: ${correct})`);
         }
         document.getElementById("answer-input").value = "";
     };
@@ -173,8 +187,9 @@
         if(moveInterval) clearInterval(moveInterval);
         moveInterval = setInterval(() => {
             let p = players[myId].pos;
-            if(dir==='up') p.lat += 0.00005; if(dir==='down') p.lat -= 0.00005;
-            if(dir==='left') p.lng -= 0.00005; if(dir==='right') p.lng += 0.00005;
+            const step = 0.00005;
+            if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
+            if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
             update(ref(db, `players/p${myId}`), { lng: p.lng, lat: p.lat });
         }, 50);
     };
