@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 3D 건물 모드</title>
+    <title>안산 3D 실시간 메타버스 - URL 연동형</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -10,22 +10,26 @@
         #map { width:100vw; height:100vh; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; }
-        #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; }
+        #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; pointer-events: none; }
         .player-container { display: flex; flex-direction: column; align-items: center; }
         .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; }
         .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
-        .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:25px; display:none; z-index:4500; border-radius:15px; width: 280px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .quiz-window input { padding: 10px; width: 80%; margin-top: 10px; }
-        .quiz-window button { padding: 10px 20px; margin-top: 15px; background: #333; color: white; border: none; cursor: pointer; }
+        
+        /* 퀴즈 창 디자인 개선 */
+        .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:25px; display:none; z-index:4500; border-radius:15px; width: 300px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .quiz-window b { font-size: 18px; display: block; margin-bottom: 10px; color: #333; }
+        .quiz-window input { padding: 12px; width: 85%; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .quiz-window button { padding: 10px 20px; margin-top: 15px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 14px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
-    <h1>안산 3D 메타버스 (3D 모드)</h1>
-    <p id="loading-text">V-World 3D 데이터를 불러오는 중...</p>
+    <h1>안산 3D 실시간 메타버스</h1>
+    <p id="loading-text">V-World 및 시트 데이터 로딩 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">P1 입장</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">P2 입장</button>
@@ -33,16 +37,18 @@
 </div>
 
 <div id="ui">
-    <div style="color: #60a5fa; font-weight: bold; margin-bottom: 5px;">📍 안산 실시간 3D 맵</div>
+    <div style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom:5px; margin-bottom:5px;">📊 실시간 스코어</div>
     <div>P1 점수: <span id="score1">0</span></div>
     <div>P2 점수: <span id="score2">0</span></div>
-    <div id="status" style="font-size:11px; margin-top:5px;">연결 확인 중...</div>
 </div>
 
 <div id="quiz-box" class="quiz-window">
-    <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">🚩 문제 발생!</div>
-    <p id="question-text"></p>
-    <input id="answer-input" placeholder="정답 입력" autocomplete="off">
+    <div id="question-content">
+        <b id="question-text">질문 로딩 중...</b>
+        <div id="url-container"></div>
+    </div>
+    <input id="answer-input" placeholder="정답을 입력하세요" autocomplete="off">
+    <br>
     <button onclick="window.submitAnswer()">확인</button>
 </div>
 
@@ -73,23 +79,22 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // VWorld 3D 하이브리드 스타일 설정
     const map = new maplibregl.Map({
         container: "map",
         style: {
             "version": 8,
             "sources": {
                 "vworld-sat": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Satellite/{z}/{y}/{x}.jpeg`], "tileSize": 256 },
-                "vworld-3d": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Hybrid/{z}/{y}/{x}.png`], "tileSize": 256 }
+                "vworld-hyb": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Hybrid/{z}/{y}/{x}.png`], "tileSize": 256 }
             },
             "layers": [
                 { "id": "vworld-sat", "type": "raster", "source": "vworld-sat" },
-                { "id": "vworld-3d", "type": "raster", "source": "vworld-3d" }
+                { "id": "vworld-hyb", "type": "raster", "source": "vworld-hyb" }
             ]
         },
         center: [126.8309, 37.3219],
         zoom: 18,
-        pitch: 60, // 3D 느낌을 위해 기울임 유지
+        pitch: 60,
         antialias: true
     });
 
@@ -103,27 +108,37 @@
         try {
             const res = await fetch(SHEET_URL + "&cb=" + Date.now());
             const text = await res.text();
-            const rows = text.split("\n").map(row => row.split(",")).filter(row => row.length >= 5);
+            const rows = text.split("\n").map(row => row.split(","));
+            
             for(let i=1; i<rows.length; i++) {
                 const col = rows[i].map(c => c.replace(/"/g, '').trim());
+                if(col.length < 5) continue;
+                
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
                     const el = document.createElement("div");
-                    el.style.width = "20px"; el.style.height = "20px"; el.style.background = "#ff4757"; el.style.borderRadius = "50%"; el.style.border = "3px solid white"; el.style.boxShadow = "0 0 10px rgba(255,0,0,0.5)";
+                    el.style.width = "20px"; el.style.height = "20px"; el.style.background = "#ff4757"; el.style.borderRadius = "50%"; el.style.border = "3px solid white";
                     new maplibregl.Marker(el).setLngLat([lng, lat]).addTo(map);
-                    problems.push({ pos: {lng, lat}, q: col[3], a: col[4], done: false });
+                    
+                    problems.push({ 
+                        pos: {lng, lat}, 
+                        q: col[3], 
+                        a: col[4], 
+                        url: col[5] || "", // F열 URL 저장
+                        done: false 
+                    });
                 }
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) { document.getElementById('loading-text').innerText = "시트 로드 실패!"; }
+        } catch (e) { document.getElementById('loading-text').innerText = "시트 연결 오류!"; }
     }
     fetchQuizzes();
 
     function createMarker(id) {
         const el = document.createElement("div");
         el.className = "player-container";
-        el.innerHTML = `<div class="player-label">Player ${id}</div><div class="player-dot" style="background:${id===1?'#3b82f6':'#10b981'}"></div>`;
+        el.innerHTML = `<div class="player-label">P${id}</div><div class="player-dot" style="background:${id===1?'#3b82f6':'#10b981'}"></div>`;
         players[id].marker = new maplibregl.Marker({element: el}).setLngLat([players[id].pos.lng, players[id].pos.lat]).addTo(map);
     }
     createMarker(1); createMarker(2);
@@ -143,26 +158,35 @@
                 }
             });
 
-            // 플레이어간 거리에 따른 자동 줌
+            // 플레이어간 거리에 따른 자동 줌 (여백 60으로 축소하여 더 확대되게 설정)
             const bounds = new maplibregl.LngLatBounds();
             bounds.extend([players[1].pos.lng, players[1].pos.lat]);
             bounds.extend([players[2].pos.lng, players[2].pos.lat]);
-            map.fitBounds(bounds, { padding: 120, maxZoom: 19, duration: 300 });
+            map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 300 });
 
             checkQuizDistance();
         });
-        document.getElementById('status').innerText = "서버 연결 완료 ✅";
     };
 
     function checkQuizDistance() {
         if(!myId) return;
+        let found = false;
         problems.forEach(p => {
             if(p.done) return;
             const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
             if(dist < 0.0003) {
+                found = true;
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
+                
+                // URL 버튼 표시 로직
+                const urlContainer = document.getElementById("url-container");
+                if(p.url && p.url.startsWith('http')) {
+                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>`;
+                } else {
+                    urlContainer.innerHTML = "";
+                }
             }
         });
 
@@ -179,13 +203,13 @@
         const input = document.getElementById("answer-input").value.trim().replace(/\s/g, '');
         const correct = currentProblem.a.trim().replace(/\s/g, '');
         if(input === correct) {
-            alert("정답입니다! 점수가 올라갑니다.");
+            alert("정답입니다! 🎉");
             update(ref(db, `players/p${myId}`), { score: players[myId].score + 10 });
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
         } else {
-            alert(`틀렸습니다! 다시 생각해보세요. (정답: ${correct})`);
+            alert(`오답입니다!\n(입력: ${input} / 정답: ${correct})`);
         }
         document.getElementById("answer-input").value = "";
     };
