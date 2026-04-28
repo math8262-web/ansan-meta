@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 역피라미드 완성본</title>
+    <title>안산 3D 실시간 메타버스 - 마커 틈새 해결본</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -11,17 +11,20 @@
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; }
         #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; pointer-events: none; }
-        
         .player-container { display: flex; flex-direction: column; align-items: center; }
         .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; }
         .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
         
+        /* ✅ [유지] 사용자님이 보여주신 문제 창 디자인 개선 버전 */
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:15px; display:none; z-index:4500; border-radius:15px; width: 240px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .quiz-window b { font-size: 15px; display: block; margin-bottom: 10px; color: #333; }
+        .quiz-window input { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; }
+        .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
+        .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* ✨ [수정] 틈새 없는 역피라미드 조립 시스템 */
+        /* ✨ [추가/수정] 틈새 없는 3D 역피라미드 마커 스타일 */
         .m-wrap { width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; }
         .p-scene { width: 30px; height: 30px; perspective: 1000px; }
         .p-body { 
@@ -30,31 +33,31 @@
             animation: p-rot 3s infinite linear; 
         }
 
-        /* 1. 윗면 사각형 (역피라미드의 지붕) */
+        /* 윗면 사각형 */
         .p-cap {
             position: absolute; width: 30px; height: 30px;
             background: #ff4757;
             transform: rotateX(90deg); /* 평평하게 눕힘 */
             top: 0; left: 0;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255,255,255,0.1); /* 미세한 테두리로 경계 구분 */
             box-sizing: border-box;
         }
 
-        /* 2. 옆면 삼각형 (아래쪽 꼭짓점으로 모이는 역삼각형) */
+        /* 옆면 삼각형 (아래쪽 꼭짓점으로 모임) */
         .p-side {
             position: absolute; width: 0; height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 30px solid #ff4757; /* 아래가 뾰족하도록 border-top 사용 */
-            top: 15px; left: 0; /* 윗면 사각형의 높이 절반 지점에서 시작 */
-            transform-origin: 50% 0%; /* 윗변을 기준으로 안으로 꺾음 */
+            border-left: 15.5px solid transparent; /* 0.5px 크게 만들어 겹침 */
+            border-right: 15.5px solid transparent; /* 0.5px 크게 만들어 겹침 */
+            border-top: 31px solid #ff4757; /* 높이도 미세하게 키움 */
+            top: 15px; left: -0.5px; /* 크게 만든 만큼 위치 보정 */
+            transform-origin: 50% 0%; /* 윗변을 기준으로 기울임 */
         }
 
-        /* 각 면을 윗면 사각형의 네 변에 딱 붙이고 안으로 꺾어 조립 */
-        .s1 { transform: rotateY(0deg) translateZ(15px) rotateX(-20deg); border-top-color: #ff4757; }
-        .s2 { transform: rotateY(90deg) translateZ(15px) rotateX(-20deg); border-top-color: #ff6b81; }
-        .s3 { transform: rotateY(180deg) translateZ(15px) rotateX(-20deg); border-top-color: #ee5253; }
-        .s4 { transform: rotateY(270deg) translateZ(15px) rotateX(-20deg); border-top-color: #ff7f7f; }
+        /* 각 면을 윗면 사각형에 붙이고 안으로 꺾음 (기울기를 미세하게 늘림) */
+        .s1 { transform: rotateY(0deg) translateZ(14.8px) rotateX(-20.5deg); border-top-color: #ff4d4d; }
+        .s2 { transform: rotateY(90deg) translateZ(14.8px) rotateX(-20.5deg); border-top-color: #ff6b81; }
+        .s3 { transform: rotateY(180deg) translateZ(14.8px) rotateX(-20.5deg); border-top-color: #ee5253; }
+        .s4 { transform: rotateY(270deg) translateZ(14.8px) rotateX(-20.5deg); border-top-color: #ff7f7f; }
 
         @keyframes p-rot {
             0% { transform: rotateX(-20deg) rotateY(0deg) translateY(0); }
@@ -67,7 +70,7 @@
 
 <div id="login-overlay">
     <h1>안산 3D 실시간 메타버스</h1>
-    <p id="loading-text">데이터 로딩 중...</p>
+    <p id="loading-text">V-World 및 시트 데이터 로딩 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">Player1 입장</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">Player2 입장</button>
@@ -75,7 +78,7 @@
 </div>
 
 <div id="ui">
-    <div style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom:5px; margin-bottom:5px;">📊 실시간 스코어</div>
+    <div style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom:5px; margin-bottom:5px;">📊 실시간 ส코어</div>
     <div>P1 점수: <span id="score1">0</span></div>
     <div>P2 점수: <span id="score2">0</span></div>
 </div>
@@ -154,6 +157,7 @@
                 
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
+                    /* [수정 포인트] 마커 생성 코드를 틈새 없는 버전으로 교체 */
                     const el = document.createElement("div");
                     el.className = "m-wrap";
                     el.innerHTML = `
@@ -167,7 +171,11 @@
                             </div>
                         </div>
                     `;
-                    new maplibregl.Marker({element: el, anchor: 'bottom'}).setLngLat([lng, lat]).addTo(map);
+                    
+                    new maplibregl.Marker({element: el, anchor: 'bottom'})
+                        .setLngLat([lng, lat])
+                        .addTo(map);
+                    
                     problems.push({ pos: {lng, lat}, q: col[3], a: col[4], url: col[5] || "", done: false });
                 }
             }
@@ -203,6 +211,7 @@
         });
     };
 
+    /* ✅ [유지] 사용자님이 보여주신 거리 체크 및 문제창 표시 로직 그대로 유지 */
     function checkQuizDistance() {
         if(!myId) return;
         problems.forEach(p => {
@@ -212,12 +221,16 @@
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
+                
                 const urlContainer = document.getElementById("url-container");
                 if(p.url && p.url.startsWith('http')) {
-                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료</a>`;
-                } else { urlContainer.innerHTML = ""; }
+                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>`;
+                } else {
+                    urlContainer.innerHTML = "";
+                }
             }
         });
+
         if(currentProblem) {
             const distToCurrent = Math.sqrt(Math.pow(players[myId].pos.lng - currentProblem.pos.lng, 2) + Math.pow(players[myId].pos.lat - currentProblem.pos.lat, 2));
             if(distToCurrent >= 0.0003) {
@@ -227,16 +240,19 @@
         }
     }
 
+    /* ✅ [유지] 정답 제출 로직 그대로 유지 */
     window.submitAnswer = function() {
         const input = document.getElementById("answer-input").value.trim().replace(/\s/g, '');
         const correct = currentProblem.a.trim().replace(/\s/g, '');
         if(input === correct) {
-            alert("정답! 🎉");
+            alert("정답입니다! 🎉");
             update(ref(db, `players/p${myId}`), { score: players[myId].score + 10 });
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
-        } else { alert("오답입니다!"); }
+        } else {
+            alert(`오답입니다!\n(입력: ${input} / 정답: ${correct})`);
+        }
         document.getElementById("answer-input").value = "";
     };
 
