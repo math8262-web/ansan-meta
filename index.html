@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 메타버스 - 거리 연동형</title>
+    <title>안산 3D 실시간 메타버스 - 3D 건물 모드</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -13,9 +13,9 @@
         #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; }
         .player-container { display: flex; flex-direction: column; align-items: center; }
         .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; }
-        .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; }
+        .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
-        .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:25px; display:none; z-index:4500; border-radius:15px; width: 280px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .quiz-window input { padding: 10px; width: 80%; margin-top: 10px; }
         .quiz-window button { padding: 10px 20px; margin-top: 15px; background: #333; color: white; border: none; cursor: pointer; }
@@ -24,8 +24,8 @@
 <body>
 
 <div id="login-overlay">
-    <h1>안산 3D 메타버스</h1>
-    <p id="loading-text">데이터 로딩 중...</p>
+    <h1>안산 3D 메타버스 (3D 모드)</h1>
+    <p id="loading-text">V-World 3D 데이터를 불러오는 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">P1 입장</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">P2 입장</button>
@@ -33,13 +33,15 @@
 </div>
 
 <div id="ui">
+    <div style="color: #60a5fa; font-weight: bold; margin-bottom: 5px;">📍 안산 실시간 3D 맵</div>
     <div>P1 점수: <span id="score1">0</span></div>
     <div>P2 점수: <span id="score2">0</span></div>
-    <div id="status">연결 대기 중...</div>
+    <div id="status" style="font-size:11px; margin-top:5px;">연결 확인 중...</div>
 </div>
 
 <div id="quiz-box" class="quiz-window">
-    <p id="question-text" style="font-weight:bold;"></p>
+    <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">🚩 문제 발생!</div>
+    <p id="question-text"></p>
     <input id="answer-input" placeholder="정답 입력" autocomplete="off">
     <button onclick="window.submitAnswer()">확인</button>
 </div>
@@ -58,6 +60,7 @@
     import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSoS62NOsFroOTNIg4UdB90D1g-oGnlmnLNJtUGyjA-Fn9abB5IRnsyT2I0AJYS0Gj8abQrnuUS4Nbv/pub?gid=0&single=true&output=csv";
+    const VWORLD_KEY = "6665AAE1-38F5-3EB9-B7C6-61D823C0EDD7";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBuW2RPcG9_skuQ8tGOZhlDuyZY531D24Q",
@@ -70,14 +73,24 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // VWorld 3D 하이브리드 스타일 설정
     const map = new maplibregl.Map({
         container: "map",
         style: {
             "version": 8,
-            "sources": { "vworld": { "type": "raster", "tiles": ["https://api.vworld.kr/req/wmts/1.0.0/6665AAE1-38F5-3EB9-B7C6-61D823C0EDD7/Satellite/{z}/{y}/{x}.jpeg"], "tileSize": 256 } },
-            "layers": [{ "id": "vworld", "type": "raster", "source": "vworld" }]
+            "sources": {
+                "vworld-sat": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Satellite/{z}/{y}/{x}.jpeg`], "tileSize": 256 },
+                "vworld-3d": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Hybrid/{z}/{y}/{x}.png`], "tileSize": 256 }
+            },
+            "layers": [
+                { "id": "vworld-sat", "type": "raster", "source": "vworld-sat" },
+                { "id": "vworld-3d", "type": "raster", "source": "vworld-3d" }
+            ]
         },
-        center: [126.8309, 37.3219], zoom: 17, pitch: 0 // 줌 자동화 시 피치는 0이 안정적입니다
+        center: [126.8309, 37.3219],
+        zoom: 18,
+        pitch: 60, // 3D 느낌을 위해 기울임 유지
+        antialias: true
     });
 
     let myId = null, moveInterval = null, currentProblem = null, problems = [];
@@ -96,22 +109,21 @@
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
                     const el = document.createElement("div");
-                    el.className = "quiz-marker";
-                    el.style.width = "20px"; el.style.height = "20px"; el.style.background = "red"; el.style.borderRadius = "50%"; el.style.border = "2px solid white";
+                    el.style.width = "20px"; el.style.height = "20px"; el.style.background = "#ff4757"; el.style.borderRadius = "50%"; el.style.border = "3px solid white"; el.style.boxShadow = "0 0 10px rgba(255,0,0,0.5)";
                     new maplibregl.Marker(el).setLngLat([lng, lat]).addTo(map);
                     problems.push({ pos: {lng, lat}, q: col[3], a: col[4], done: false });
                 }
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) { document.getElementById('loading-text').innerText = "로드 실패!"; }
+        } catch (e) { document.getElementById('loading-text').innerText = "시트 로드 실패!"; }
     }
     fetchQuizzes();
 
     function createMarker(id) {
         const el = document.createElement("div");
         el.className = "player-container";
-        el.innerHTML = `<div class="player-label">P${id}</div><div class="player-dot" style="background:${id===1?'blue':'lime'}"></div>`;
+        el.innerHTML = `<div class="player-label">Player ${id}</div><div class="player-dot" style="background:${id===1?'#3b82f6':'#10b981'}"></div>`;
         players[id].marker = new maplibregl.Marker({element: el}).setLngLat([players[id].pos.lng, players[id].pos.lat]).addTo(map);
     }
     createMarker(1); createMarker(2);
@@ -122,8 +134,6 @@
         onValue(ref(db, 'players/'), (snap) => {
             const data = snap.val();
             if(!data) return;
-            
-            // 모든 플레이어 위치 업데이트
             [1, 2].forEach(pId => {
                 if(data[`p${pId}`]) {
                     players[pId].pos = { lng: data[`p${pId}`].lng, lat: data[`p${pId}`].lat };
@@ -133,32 +143,29 @@
                 }
             });
 
-            // 지도 자동 줌: 두 플레이어 사이의 거리에 맞춰 축소/확대
+            // 플레이어간 거리에 따른 자동 줌
             const bounds = new maplibregl.LngLatBounds();
             bounds.extend([players[1].pos.lng, players[1].pos.lat]);
             bounds.extend([players[2].pos.lng, players[2].pos.lat]);
-            map.fitBounds(bounds, { padding: 100, maxZoom: 18, duration: 200 });
+            map.fitBounds(bounds, { padding: 120, maxZoom: 19, duration: 300 });
 
             checkQuizDistance();
         });
-        document.getElementById('status').innerText = "온라인 연결됨 ✅";
+        document.getElementById('status').innerText = "서버 연결 완료 ✅";
     };
 
     function checkQuizDistance() {
-        let isNearAny = false;
+        if(!myId) return;
         problems.forEach(p => {
             if(p.done) return;
             const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
-            
-            if(dist < 0.0003) { // 퀴즈 근처에 있음
-                isNearAny = true;
+            if(dist < 0.0003) {
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
             }
         });
 
-        // 현재 열려있는 퀴즈와 거리가 멀어지면 창 닫기
         if(currentProblem) {
             const distToCurrent = Math.sqrt(Math.pow(players[myId].pos.lng - currentProblem.pos.lng, 2) + Math.pow(players[myId].pos.lat - currentProblem.pos.lat, 2));
             if(distToCurrent >= 0.0003) {
@@ -172,13 +179,13 @@
         const input = document.getElementById("answer-input").value.trim().replace(/\s/g, '');
         const correct = currentProblem.a.trim().replace(/\s/g, '');
         if(input === correct) {
-            alert("정답!");
+            alert("정답입니다! 점수가 올라갑니다.");
             update(ref(db, `players/p${myId}`), { score: players[myId].score + 10 });
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
         } else {
-            alert(`오답! (정답: ${correct})`);
+            alert(`틀렸습니다! 다시 생각해보세요. (정답: ${correct})`);
         }
         document.getElementById("answer-input").value = "";
     };
@@ -187,7 +194,7 @@
         if(moveInterval) clearInterval(moveInterval);
         moveInterval = setInterval(() => {
             let p = players[myId].pos;
-            const step = 0.00005;
+            const step = 0.00004;
             if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
             if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
             update(ref(db, `players/p${myId}`), { lng: p.lng, lat: p.lat });
