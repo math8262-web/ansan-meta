@@ -2,55 +2,23 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 최종 수정본</title>
+    <title>안산 3D 실시간 메타버스 - 최종 완성본</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
         body { margin:0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; touch-action: none; background: #000; }
         #map { width:100vw; height:100vh; }
-        
-        #login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 5000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;
-        }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; transition: 0.2s; }
-        .login-btn:hover { transform: scale(1.1); }
-
-        #ui { 
-            position:absolute; top:10px; left:10px; 
-            background:rgba(0,0,0,0.85); color:white; 
-            padding:15px; border-radius:10px; z-index:2000; font-size:14px; 
-            border: 1px solid #444; pointer-events: none;
-        }
+        #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; pointer-events: none; }
         .score-box { margin-bottom: 5px; display: flex; align-items: center; }
         .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-
         .player-container { display: flex; flex-direction: column; align-items: center; }
-        .player-label {
-            background: #fff; color: #000; padding: 3px 10px; border-radius: 5px;
-            font-size: 12px; font-weight: bold; border: 2px solid #333; margin-bottom: 5px; white-space: nowrap;
-        }
+        .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; margin-bottom: 5px; }
         .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-
-        #controls {
-            position: fixed; bottom: 30px; right: 30px;
-            display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px);
-            gap: 12px; z-index: 4000;
-        }
-        .control-btn {
-            width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3);
-            border: 2px solid white; border-radius: 50%; color: white;
-            font-size: 28px; display: flex; align-items: center; justify-content: center;
-            user-select: none; cursor: pointer;
-        }
-
-        .quiz-window {
-            position:absolute; bottom:130px; left: 50%; transform: translateX(-50%);
-            background:white; color:black; padding:25px; 
-            display:none; z-index:4500; border-radius:15px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; width: 280px;
-        }
+        #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
+        .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
+        .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:25px; display:none; z-index:4500; border-radius:15px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; width: 280px; }
         .quiz-window input { padding: 10px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
         .quiz-window button { padding: 10px 20px; margin-top: 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
@@ -91,9 +59,9 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // 1. 구글 시트 ID 설정
+    // 사용자님의 구글 시트 웹 게시 링크
     const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSoS62NOsFroOTNIg4UdB90D1g-oGnlmnLNJtUGyjA-Fn9abB5IRnsyT2I0AJYS0Gj8abQrnuUS4Nbv/pub?gid=0&single=true&output=csv";
 
     const firebaseConfig = {
@@ -107,13 +75,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const VWORLD_KEY = "6665AAE1-38F5-3EB9-B7C6-61D823C0EDD7";
     const map = new maplibregl.Map({
         container: "map",
         style: {
             "version": 8,
             "sources": {
-                "vworld-satellite": { "type": "raster", "tiles": [`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Satellite/{z}/{y}/{x}.jpeg`], "tileSize": 256 }
+                "vworld-satellite": { "type": "raster", "tiles": ["https://api.vworld.kr/req/wmts/1.0.0/6665AAE1-38F5-3EB9-B7C6-61D823C0EDD7/Satellite/{z}/{y}/{x}.jpeg"], "tileSize": 256 }
             },
             "layers": [{ "id": "vworld-satellite", "type": "raster", "source": "vworld-satellite" }]
         },
@@ -128,13 +95,12 @@
 
     async function fetchQuizzes() {
         try {
-            const response = await fetch(SHEET_URL + "&cb=" + Date.now());
-            const csvText = await response.text();
-            const rows = csvText.split(/\r?\n/).filter(r => r.trim() !== "").slice(1);
+            const res = await fetch(SHEET_URL + "&cb=" + Date.now());
+            const text = await res.text();
+            const rows = text.split(/\r?\n/).filter(r => r.trim() !== "").slice(1);
             
             rows.forEach(row => {
-                // 쉼표가 따옴표 안에 있는 경우를 보호하는 정교한 분리 방식
-                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                const cols = row.split(',').map(c => c.replace(/^"|"$/g, '').trim());
                 if(cols.length < 5) return;
                 
                 const lng = parseFloat(cols[1]), lat = parseFloat(cols[2]);
@@ -142,18 +108,11 @@
                 el.style.width = "18px"; el.style.height = "18px"; el.style.background = "red"; el.style.border = "2px solid white"; el.style.borderRadius = "50%";
                 new maplibregl.Marker(el).setLngLat([lng, lat]).addTo(map);
 
-                problems.push({ 
-                    pos: {lng, lat}, 
-                    q: cols[3], 
-                    a: cols[4], // 정답
-                    done: false 
-                });
+                problems.push({ pos: {lng, lat}, q: cols[3], a: cols[4], done: false });
             });
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) {
-            document.getElementById('loading-text').innerText = "시트 로드 실패!";
-        }
+        } catch (e) { document.getElementById('loading-text').innerText = "로드 실패!"; }
     }
     fetchQuizzes();
 
@@ -168,10 +127,7 @@
     window.startGame = function(id) {
         myId = id;
         document.getElementById('login-overlay').style.display = 'none';
-        
-        // 로그인 즉시 위치 초기화 및 실시간 데이터 감시 시작
         update(ref(db, `players/p${myId}`), { lng: players[myId].pos.lng, lat: players[myId].pos.lat, score: 0 });
-
         onValue(ref(db, 'players/'), (snap) => {
             const data = snap.val();
             if(!data) return;
@@ -180,60 +136,49 @@
                     const p = data[`p${pId}`];
                     players[pId].pos = { lng: p.lng, lat: p.lat };
                     players[pId].marker.setLngLat([p.lng, p.lat]);
+                    document.getElementById(`score${pId}`).innerText = p.score || 0;
                     players[pId].score = p.score || 0;
-                    document.getElementById(`score${pId}`).innerText = players[pId].score;
                 }
             });
-            updateCamera();
+            map.easeTo({ center: [players[myId].pos.lng, players[myId].pos.lat], duration: 100 });
+            checkDist();
         });
         document.getElementById('status').innerText = "서버 연결 성공 ✅";
     };
 
-    function updateCamera() {
-        if (!myId) return;
-        map.easeTo({ center: [players[myId].pos.lng, players[myId].pos.lat], duration: 100 });
-        checkQuizDistance();
-    }
-
-    function checkQuizDistance() {
-        if (currentProblem) return;
-        for(let p of problems) {
-            if(p.done) continue;
-            const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
-            if(dist < 0.0003) {
+    function checkDist() {
+        if(currentProblem) return;
+        problems.forEach(p => {
+            const d = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
+            if(d < 0.0003 && !p.done) {
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
-                break;
             }
-        }
+        });
     }
 
     window.submitAnswer = function() {
         const input = document.getElementById("answer-input").value.trim().replace(/\s+/g, '');
         const realA = currentProblem.a.trim().replace(/\s+/g, '');
-
         if(input === realA) {
             alert("정답! 🎉");
-            let newScore = players[myId].score + 10;
-            update(ref(db, `players/p${myId}`), { score: newScore });
+            update(ref(db, `players/p${myId}`), { score: players[myId].score + 10 });
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
-            document.getElementById("answer-input").value = "";
             currentProblem = null;
         } else {
-            // [디버깅] 틀렸을 때 시스템이 생각하는 정답을 보여줍니다.
-            alert(`오답! 다시 생각해보세요.\n(입력: ${input} / 시스템정답: ${realA})`);
+            alert(`오답입니다!\n(입력: ${input} / 시스템정답: ${realA})`);
         }
+        document.getElementById("answer-input").value = "";
     };
 
     window.startMove = (dir) => {
         if(moveInterval) clearInterval(moveInterval);
         moveInterval = setInterval(() => {
             let p = players[myId].pos;
-            const step = 0.00004;
-            if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
-            if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
+            if(dir==='up') p.lat += 0.00004; if(dir==='down') p.lat -= 0.00004;
+            if(dir==='left') p.lng -= 0.00004; if(dir==='right') p.lng += 0.00004;
             update(ref(db, `players/p${myId}`), { lng: p.lng, lat: p.lat });
         }, 50);
     };
