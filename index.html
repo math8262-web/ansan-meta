@@ -17,12 +17,28 @@
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
         
-        /* 퀴즈 창 디자인 개선 */
+        /* 퀴즈 창 디자인 */
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:15px; display:none; z-index:4500; border-radius:15px; width: 240px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         .quiz-window b { font-size: 15px; display: block; margin-bottom: 10px; color: #333; }
         .quiz-window input { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; }
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
+
+        /* [수정] 회전하는 빨간색 역피라미드 마커 스타일 추가 */
+        .quiz-marker {
+            width: 0; height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 20px solid #ff4757;
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
+            animation: rotatePyramid 2s infinite linear;
+            cursor: pointer;
+        }
+        @keyframes rotatePyramid {
+            0% { transform: translateY(0) rotateY(0deg); }
+            50% { transform: translateY(-10px) rotateY(180deg); }
+            100% { transform: translateY(0) rotateY(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -116,15 +132,16 @@
                 
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
+                    /* [수정] 원형 마커에서 역피라미드 마커로 변경 */
                     const el = document.createElement("div");
-                    el.style.width = "20px"; el.style.height = "20px"; el.style.background = "#ff4757"; el.style.borderRadius = "50%"; el.style.border = "3px solid white";
-                    new maplibregl.Marker(el).setLngLat([lng, lat]).addTo(map);
+                    el.className = "quiz-marker";
+                    new maplibregl.Marker({element: el, anchor: 'bottom'}).setLngLat([lng, lat]).addTo(map);
                     
                     problems.push({ 
                         pos: {lng, lat}, 
                         q: col[3], 
                         a: col[4], 
-                        url: col[5] || "", // F열 URL 저장
+                        url: col[5] || "", 
                         done: false 
                     });
                 }
@@ -158,11 +175,11 @@
                 }
             });
 
-            // 플레이어간 거리에 따른 자동 줌 (여백 60으로 축소하여 더 확대되게 설정)
+            /* [수정] 이탈 방지를 위한 줌 설정: padding 150, maxZoom 17 */
             const bounds = new maplibregl.LngLatBounds();
             bounds.extend([players[1].pos.lng, players[1].pos.lat]);
             bounds.extend([players[2].pos.lng, players[2].pos.lat]);
-            map.fitBounds(bounds, { padding: 150, maxZoom: 18, duration: 400 });
+            map.fitBounds(bounds, { padding: 150, maxZoom: 17, duration: 400 });
 
             checkQuizDistance();
         });
@@ -170,17 +187,14 @@
 
     function checkQuizDistance() {
         if(!myId) return;
-        let found = false;
         problems.forEach(p => {
             if(p.done) return;
             const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
             if(dist < 0.0003) {
-                found = true;
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
                 
-                // URL 버튼 표시 로직
                 const urlContainer = document.getElementById("url-container");
                 if(p.url && p.url.startsWith('http')) {
                     urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>`;
