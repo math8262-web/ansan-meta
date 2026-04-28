@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 수정본</title>
+    <title>안산 3D 실시간 메타버스 - 3D 퀴즈 마커</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -17,28 +17,29 @@
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
         
-        /* 퀴즈 창 */
+        /* 퀴즈 창 디자인 */
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:15px; display:none; z-index:4500; border-radius:15px; width: 240px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         .quiz-window b { font-size: 15px; display: block; margin-bottom: 10px; color: #333; }
         .quiz-window input { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; }
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* [수정] 역피라미드 마커: 크기를 키우고 z-index 확보 */
+        /* [핵심] 3D 회전 빨간색 역피라미드 마커 CSS */
         .quiz-marker {
             width: 0; height: 0;
             border-left: 15px solid transparent;
             border-right: 15px solid transparent;
-            border-top: 25px solid #ff4757; /* 선명한 빨간색 */
-            filter: drop-shadow(0 0 10px rgba(255, 71, 87, 0.8));
-            animation: rotatePyramid 2s infinite ease-in-out;
+            border-top: 25px solid #ff4757; /* 빨간색 역피라미드 본체 */
+            filter: drop-shadow(0 5px 10px rgba(255, 71, 87, 0.5));
+            animation: rotate3D 2s infinite linear;
             cursor: pointer;
-            z-index: 100 !important;
+            transform-style: preserve-3d;
         }
-        @keyframes rotatePyramid {
-            0% { transform: translateY(0) rotateY(0deg); }
-            50% { transform: translateY(-15px) rotateY(180deg); }
-            100% { transform: translateY(0) rotateY(360deg); }
+
+        @keyframes rotate3D {
+            0% { transform: rotateY(0deg) translateY(0); }
+            50% { transform: rotateY(180deg) translateY(-10px); }
+            100% { transform: rotateY(360deg) translateY(0); }
         }
     </style>
 </head>
@@ -46,7 +47,7 @@
 
 <div id="login-overlay">
     <h1>안산 3D 실시간 메타버스</h1>
-    <p id="loading-text">데이터 로딩 중...</p>
+    <p id="loading-text">V-World 및 시트 데이터 로딩 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">Player1 입장</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">Player2 입장</button>
@@ -64,7 +65,7 @@
         <b id="question-text">질문 로딩 중...</b>
         <div id="url-container"></div>
     </div>
-    <input id="answer-input" placeholder="정답 입력" autocomplete="off">
+    <input id="answer-input" placeholder="정답을 입력하세요" autocomplete="off">
     <br>
     <button onclick="window.submitAnswer()">확인</button>
 </div>
@@ -131,33 +132,33 @@
                 const col = rows[i].map(c => c.replace(/"/g, '').trim());
                 if(col.length < 5) continue;
                 
-                const lng = parseFloat(col[1]); // 시트의 경도
-                const lat = parseFloat(col[2]); // 시트의 위도
+                const lng = parseFloat(col[1]); // B열: 경도
+                const lat = parseFloat(col[2]); // C열: 위도
                 
                 if(!isNaN(lng) && !isNaN(lat)) {
-                    console.log(`퀴즈 설치됨: ${lng}, ${lat}`); // 디버깅용
-                    
+                    /* [수정 포인트] 기존 원형 마커 대신 3D 역피라미드 엘리먼트 생성 */
                     const el = document.createElement("div");
                     el.className = "quiz-marker";
                     
-                    // 마커 생성 및 지도 추가
-                    new maplibregl.Marker({element: el, anchor: 'bottom'})
-                        .setLngLat([lng, lat])
-                        .addTo(map);
+                    new maplibregl.Marker({
+                        element: el,
+                        anchor: 'bottom' // 역피라미드 꼭짓점이 좌표에 닿도록
+                    })
+                    .setLngLat([lng, lat])
+                    .addTo(map);
                     
                     problems.push({ 
                         pos: {lng, lat}, 
-                        q: col[3], a: col[4], url: col[5] || "", 
+                        q: col[3], 
+                        a: col[4], 
+                        url: col[5] || "", 
                         done: false 
                     });
                 }
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) { 
-            console.error(e);
-            document.getElementById('loading-text').innerText = "데이터 로드 실패!"; 
-        }
+        } catch (e) { document.getElementById('loading-text').innerText = "데이터 로딩 오류!"; }
     }
     fetchQuizzes();
 
@@ -205,7 +206,7 @@
                 
                 const urlContainer = document.getElementById("url-container");
                 if(p.url && p.url.startsWith('http')) {
-                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료</a>`;
+                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>`;
                 } else {
                     urlContainer.innerHTML = "";
                 }
@@ -222,17 +223,16 @@
     }
 
     window.submitAnswer = function() {
-        if(!currentProblem) return;
         const input = document.getElementById("answer-input").value.trim().replace(/\s/g, '');
         const correct = currentProblem.a.trim().replace(/\s/g, '');
         if(input === correct) {
             alert("정답입니다! 🎉");
-            update(ref(db, `players/p${myId}`), { score: (players[myId].score || 0) + 10 });
+            update(ref(db, `players/p${myId}`), { score: players[myId].score + 10 });
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
         } else {
-            alert(`오답입니다!`);
+            alert(`오답입니다!\n(입력: ${input} / 정답: ${correct})`);
         }
         document.getElementById("answer-input").value = "";
     };
