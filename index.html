@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 시트 연동 메타버스</title>
+    <title>안산 3D 실시간 메타버스 - 최종 수정본</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -15,6 +15,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;
         }
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; transition: 0.2s; }
+        .login-btn:hover { transform: scale(1.1); }
 
         #ui { 
             position:absolute; top:10px; left:10px; 
@@ -38,7 +39,7 @@
             gap: 12px; z-index: 4000;
         }
         .control-btn {
-            width: 75px; height: 75px; background: rgba(255, 255, 255, 0.2);
+            width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3);
             border: 2px solid white; border-radius: 50%; color: white;
             font-size: 28px; display: flex; align-items: center; justify-content: center;
             user-select: none; cursor: pointer;
@@ -52,14 +53,13 @@
         }
         .quiz-window input { padding: 10px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
         .quiz-window button { padding: 10px 20px; margin-top: 15px; background: #333; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .url-link { display: block; margin-top: 15px; font-size: 14px; color: blue; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <h1 style="margin-bottom: 5px;">안산 3D 실시간 메타버스</h1>
-    <p id="loading-text">지도를 불러오는 중...</p>
+    <p id="loading-text">구글 시트에서 퀴즈를 불러오는 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">플레이어 1 (파랑)</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">플레이어 2 (초록)</button>
@@ -67,18 +67,17 @@
 </div>
 
 <div id="ui">
-    <div style="font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #555; padding-bottom: 5px;">🎮 퀴즈 랭킹</div>
-    <div class="score-box"><div class="dot" style="background: blue;"></div> P1: <span id="score1">0</span></div>
-    <div class="score-box"><div class="dot" style="background: lime;"></div> P2: <span id="score2">0</span></div>
+    <div style="font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #555; padding-bottom: 5px;">🎮 실시간 퀴즈 랭킹</div>
+    <div class="score-box"><div class="dot" style="background: blue;"></div> P1 점수: <span id="score1">0</span></div>
+    <div class="score-box"><div class="dot" style="background: lime;"></div> P2 점수: <span id="score2">0</span></div>
     <div id="status" style="color: #60a5fa; font-size: 11px; margin-top:5px;">서버 연결 대기 중...</div>
 </div>
 
 <div id="quiz-box" class="quiz-window">
     <div style="font-weight:bold; font-size:18px; margin-bottom:10px;">🚩 퀴즈 도착!</div>
-    <p id="question-text"></p>
+    <p id="question-text" style="font-size: 16px; line-height: 1.4;"></p>
     <input id="answer-input" autocomplete="off" placeholder="정답을 입력하세요">
     <button onclick="window.submitAnswer()">확인</button>
-    <a id="url-link" class="url-link" target="_blank">🌐 정보 확인</a> 
 </div>
 
 <div id="controls">
@@ -92,8 +91,9 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+    // 1. 구글 시트 ID 설정
     const SHEET_ID = "1v_CWj9jaGzPY5HWl4OtjCuud2qZXKQt5uDspELJJx44";
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
@@ -121,10 +121,7 @@
         center: [126.8309, 37.3219], zoom: 17, pitch: 45
     });
 
-    let myId = null;
-    let moveInterval = null;
-    let currentProblem = null;
-    let problems = [];
+    let myId = null, moveInterval = null, currentProblem = null, problems = [];
     let players = {
         1: { pos: { lng: 126.8309, lat: 37.3219 }, marker: null, color: "blue", score: 0 },
         2: { pos: { lng: 126.8329, lat: 37.3219 }, marker: null, color: "lime", score: 0 }
@@ -137,6 +134,7 @@
             const rows = csvText.split(/\r?\n/).filter(r => r.trim() !== "").slice(1);
             
             rows.forEach(row => {
+                // 쉼표가 따옴표 안에 있는 경우를 보호하는 정교한 분리 방식
                 const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
                 if(cols.length < 5) return;
                 
@@ -147,16 +145,15 @@
 
                 problems.push({ 
                     pos: {lng, lat}, 
-                    q: `${cols[0]}: ${cols[3]}`, 
-                    a: cols[4].replace(/\s+/g, ''), // 정답에서 공백 제거
-                    url: cols[5] || "", 
-                    doneBy: { 1: false, 2: false } 
+                    q: cols[3], 
+                    a: cols[4], // 정답
+                    done: false 
                 });
             });
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
         } catch (e) {
-            document.getElementById('loading-text').innerText = "데이터 로드 실패!";
+            document.getElementById('loading-text').innerText = "시트 로드 실패!";
         }
     }
     fetchQuizzes();
@@ -165,45 +162,49 @@
         const el = document.createElement("div");
         el.className = "player-container";
         el.innerHTML = `<div class="player-label">P${id}</div><div class="player-dot" style="background:${players[id].color}"></div>`;
-        players[id].marker = new maplibregl.Marker({element: el, anchor: 'bottom'}).setLngLat([players[id].pos.lng, players[id].pos.lat]).addTo(map);
+        players[id].marker = new maplibregl.Marker({element: el}).setLngLat([players[id].pos.lng, players[id].pos.lat]).addTo(map);
     }
     createMarker(1); createMarker(2);
 
     window.startGame = function(id) {
         myId = id;
         document.getElementById('login-overlay').style.display = 'none';
+        
+        // 로그인 즉시 위치 초기화 및 실시간 데이터 감시 시작
+        update(ref(db, `players/p${myId}`), { lng: players[myId].pos.lng, lat: players[myId].pos.lat, score: 0 });
+
         onValue(ref(db, 'players/'), (snap) => {
             const data = snap.val();
-            if(data) {
-                [1, 2].forEach(pId => {
-                    if(data[`p${pId}`]) {
-                        players[pId].pos = {lng: data[`p${pId}`].lng, lat: data[`p${pId}`].lat};
-                        players[pId].marker.setLngLat([players[pId].pos.lng, players[pId].pos.lat]);
-                        document.getElementById(`score${pId}`).innerText = data[`p${pId}`].score || 0;
-                    }
-                });
-                updateCamera();
-            }
+            if(!data) return;
+            [1, 2].forEach(pId => {
+                if(data[`p${pId}`]) {
+                    const p = data[`p${pId}`];
+                    players[pId].pos = { lng: p.lng, lat: p.lat };
+                    players[pId].marker.setLngLat([p.lng, p.lat]);
+                    players[pId].score = p.score || 0;
+                    document.getElementById(`score${pId}`).innerText = players[pId].score;
+                }
+            });
+            updateCamera();
         });
+        document.getElementById('status').innerText = "서버 연결 성공 ✅";
     };
 
     function updateCamera() {
         if (!myId) return;
-        map.jumpTo({ center: [players[myId].pos.lng, players[myId].pos.lat] });
+        map.easeTo({ center: [players[myId].pos.lng, players[myId].pos.lat], duration: 100 });
         checkQuizDistance();
     }
 
     function checkQuizDistance() {
         if (currentProblem) return;
         for(let p of problems) {
-            if(p.doneBy[myId]) continue;
+            if(p.done) continue;
             const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
             if(dist < 0.0003) {
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
-                const link = document.getElementById("url-link");
-                if(p.url) { link.href = p.url; link.style.display = "block"; } else link.style.display = "none";
                 break;
             }
         }
@@ -211,17 +212,20 @@
 
     window.submitAnswer = function() {
         const input = document.getElementById("answer-input").value.trim().replace(/\s+/g, '');
-        if(currentProblem && input === currentProblem.a) {
+        const realA = currentProblem.a.trim().replace(/\s+/g, '');
+
+        if(input === realA) {
             alert("정답! 🎉");
-            let newScore = (parseInt(document.getElementById(`score${myId}`).innerText) || 0) + 10;
+            let newScore = players[myId].score + 10;
             update(ref(db, `players/p${myId}`), { score: newScore });
-            currentProblem.doneBy[myId] = true;
+            currentProblem.done = true;
+            document.getElementById("quiz-box").style.display = "none";
+            document.getElementById("answer-input").value = "";
+            currentProblem = null;
         } else {
-            alert("오답입니다! 다시 생각해보세요.");
+            // [디버깅] 틀렸을 때 시스템이 생각하는 정답을 보여줍니다.
+            alert(`오답! 다시 생각해보세요.\n(입력: ${input} / 시스템정답: ${realA})`);
         }
-        document.getElementById("quiz-box").style.display = "none";
-        document.getElementById("answer-input").value = "";
-        currentProblem = null;
     };
 
     window.startMove = (dir) => {
