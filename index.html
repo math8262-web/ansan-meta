@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 화면 이탈 방지 통합판</title>
+    <title>안산 3D 실시간 메타버스 - 떨림 방지 및 화면 고정판</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -25,17 +25,15 @@
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* ✨ Orbit 마커 스타일 (입체 레드 테마) */
+        /* ✨ Orbit 마커 스타일 */
         .m-wrap { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; }
         .p-3d-scene { width: 50px; height: 50px; perspective: 1000px; transform-style: preserve-3d; }
         .p-3d-body { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: p-floating 4s infinite ease-in-out; }
         .core { position: absolute; top: 15px; left: 25px; transform-style: preserve-3d; animation: p-rot 5s infinite linear; }
-        
         .p-side { position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #ff4d4d; transform-origin: 50% 0%; filter: drop-shadow(0 0 5px #ff0000);}
         .s1 { transform: rotateY(0deg) rotateX(-163deg); border-bottom-color:#ff5f5f; }
         .s2 { transform: rotateY(120deg) rotateX(-163deg); border-bottom-color: #e60000; }
         .s3 { transform: rotateY(240deg) rotateX(-163deg); border-bottom-color: #b30000; }
-        
         .ring { position: absolute; border: 3px solid rgba(255, 69, 0, 0.5); border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); top: 0; left: 0; right: 0; bottom: 0; margin: auto; }
         .ring-1 { width: 50px; height: 50px; animation: ring-rot-1 3s infinite linear; }
         .ring-2 { width: 38px; height: 38px; animation: ring-rot-2 2.5s infinite linear; border-color: rgba(255, 200, 200, 0.6); }
@@ -124,6 +122,23 @@
         2: { pos: { lng: 126.8329, lat: 37.3219 }, marker: null, score: 0 }
     };
 
+    // ✨ 조작 감지 변수
+    let isUserInteracting = false;
+    let interactionTimer = null;
+
+    // 지도 드래그나 줌이 시작되면 자동 추적 일시중지
+    map.on('movestart', (e) => {
+        if (e.originalEvent) isUserInteracting = true;
+    });
+
+    // 조작이 끝나면 2초 뒤에 다시 자동 추적 모드로 복귀
+    map.on('moveend', (e) => {
+        if (e.originalEvent) {
+            clearTimeout(interactionTimer);
+            interactionTimer = setTimeout(() => { isUserInteracting = false; }, 2000);
+        }
+    });
+
     async function fetchQuizzes() {
         try {
             const res = await fetch(SHEET_URL + "&cb=" + Date.now());
@@ -171,17 +186,19 @@
                 }
             });
 
-            // ✨ [핵심 수정] 플레이어 추적 강화 로직
-            const bounds = new maplibregl.LngLatBounds();
-            bounds.extend([players[1].pos.lng, players[1].pos.lat]);
-            bounds.extend([players[2].pos.lng, players[2].pos.lat]);
+            // ✨ 사용자가 직접 조작 중이 아닐 때만 지도를 플레이어 위치로 이동
+            if (!isUserInteracting) {
+                const bounds = new maplibregl.LngLatBounds();
+                bounds.extend([players[1].pos.lng, players[1].pos.lat]);
+                bounds.extend([players[2].pos.lng, players[2].pos.lat]);
 
-            map.fitBounds(bounds, {
-                padding: 200,     // 여백을 넉넉히 주어 화면 가장자리에서 플레이어가 잘리지 않게 함
-                maxZoom: 18,      
-                duration: 200,    // 지도가 따라오는 시간을 줄여 즉각적으로 반응하게 함
-                essential: true   // 애니메이션이 다른 조작에 의해 방해받지 않도록 설정
-            });
+                map.fitBounds(bounds, {
+                    padding: 200,
+                    maxZoom: 18,      
+                    duration: 400,    // 떨림 방지를 위해 추적 속도를 약간 부드럽게(400) 조정
+                    essential: true
+                });
+            }
 
             checkQuizDistance();
         });
@@ -198,6 +215,8 @@
         if (!myId || document.activeElement.tagName === 'INPUT') return;
         const dir = keyMap[e.key];
         if (dir && !activeKeys.has(dir)) {
+            // 키보드 조작 시 사용자의 직접 조작 모드 해제 (자동 추적 강제 활성화)
+            isUserInteracting = false; 
             activeKeys.add(dir);
             updateMovement();
         }
@@ -226,7 +245,11 @@
         }, 50);
     }
 
-    window.startMove = (dir) => { activeKeys.add(dir); updateMovement(); };
+    window.startMove = (dir) => { 
+        isUserInteracting = false; // 버튼 클릭 시에도 자동 추적 활성화
+        activeKeys.add(dir); 
+        updateMovement(); 
+    };
     window.stopMove = () => { activeKeys.clear(); updateMovement(); };
 
     function checkQuizDistance() {
