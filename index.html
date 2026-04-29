@@ -217,7 +217,7 @@
 
         moveInterval = setInterval(() => {
             let p = players[myId].pos;
-            const step = 0.00003;
+            const step = 0.00002;
             activeKeys.forEach(dir => {
                 if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
                 if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
