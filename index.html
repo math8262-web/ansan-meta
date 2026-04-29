@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 키보드 조작 추가본</title>
+    <title>안산 3D 실시간 메타버스 - 키보드 조작 완벽판</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -25,7 +25,7 @@
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* Orbit 마커 스타일 */
+        /* ✨ 미래지향적 Orbit 마커 스타일 */
         .m-wrap { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; }
         .p-3d-scene { width: 50px; height: 50px; perspective: 1000px; transform-style: preserve-3d; }
         .p-3d-body { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: p-floating 4s infinite ease-in-out; }
@@ -59,7 +59,7 @@
     <div style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom:5px; margin-bottom:5px;">📊 실시간 스코어</div>
     <div>P1 점수: <span id="score1">0</span></div>
     <div>P2 점수: <span id="score2">0</span></div>
-    <div style="margin-top:5px; font-size:11px; color:#aaa;">조작: 화살표, WASD, 화면 버튼</div>
+    <div style="margin-top:5px; color:#aaa; font-size:12px;">조작: WASD / 화살표 / 버튼</div>
 </div>
 
 <div id="quiz-box" class="quiz-window">
@@ -73,10 +73,10 @@
 </div>
 
 <div id="controls">
-    <div class="control-btn" id="btn-up" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()" style="grid-column:2;">▲</div>
-    <div class="control-btn" id="btn-left" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()" style="grid-column:1; grid-row:2;">◀</div>
-    <div class="control-btn" id="btn-down" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()" style="grid-column:2; grid-row:2;">▼</div>
-    <div class="control-btn" id="btn-right" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()" style="grid-column:3; grid-row:2;">▶</div>
+    <div class="control-btn" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()" style="grid-column:2;">▲</div>
+    <div class="control-btn" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()" style="grid-column:1; grid-row:2;">◀</div>
+    <div class="control-btn" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()" style="grid-column:2; grid-row:2;">▼</div>
+    <div class="control-btn" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()" style="grid-column:3; grid-row:2;">▶</div>
 </div>
 
 <div id="map"></div>
@@ -141,7 +141,7 @@
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) { document.getElementById('loading-text').innerText = "데이터 오류!"; }
+        } catch (e) { document.getElementById('loading-text').innerText = "데이터 로딩 오류!"; }
     }
     fetchQuizzes();
 
@@ -171,7 +171,7 @@
         });
     };
 
-    /* ⌨️ 키보드 이벤트 리스너 추가 */
+    // ⌨️ 키보드 이동 로직 추가
     const keyMap = {
         'ArrowUp': 'up', 'w': 'up', 'W': 'up',
         'ArrowDown': 'down', 's': 'down', 'S': 'down',
@@ -211,32 +211,35 @@
         }, 50);
     }
 
-    /* 🖱️ 화면 버튼 조작용 함수 (기존 유지) */
-    window.startMove = (dir) => {
-        activeKeys.add(dir);
-        updateMovement();
-    };
-    window.stopMove = () => {
-        activeKeys.clear();
-        updateMovement();
-    };
+    // 마우스 버튼용 함수
+    window.startMove = (dir) => { activeKeys.add(dir); updateMovement(); };
+    window.stopMove = () => { activeKeys.clear(); updateMovement(); };
 
     function checkQuizDistance() {
         if(!myId) return;
+        let isNearAny = false;
         problems.forEach(p => {
             if(p.done) return;
             const dist = Math.sqrt(Math.pow(players[myId].pos.lng - p.pos.lng, 2) + Math.pow(players[myId].pos.lat - p.pos.lat, 2));
             if(dist < 0.0003) {
+                isNearAny = true;
                 currentProblem = p;
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
                 const urlContainer = document.getElementById("url-container");
-                urlContainer.innerHTML = (p.url && p.url.startsWith('http')) ? `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료</a>` : "";
+                urlContainer.innerHTML = (p.url && p.url.startsWith('http')) ? `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>` : "";
             }
         });
+        
+        // 어떤 마커와도 멀어지면 창 닫기
+        if(!isNearAny && currentProblem) {
+            document.getElementById("quiz-box").style.display = "none";
+            currentProblem = null;
+        }
     }
 
     window.submitAnswer = function() {
+        if(!currentProblem) return;
         const input = document.getElementById("answer-input").value.trim().replace(/\s/g, '');
         const correct = currentProblem.a.trim().replace(/\s/g, '');
         if(input === correct) {
@@ -245,7 +248,7 @@
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
-        } else { alert(`오답!`); }
+        } else { alert(`오답입니다!`); }
         document.getElementById("answer-input").value = "";
     };
 </script>
