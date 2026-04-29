@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - Orbit Marker 수정본</title>
+    <title>안산 3D 실시간 메타버스 - 키보드 조작 추가본</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -12,44 +12,33 @@
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; }
         #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; pointer-events: none; }
         
-        /* 플레이어 스타일 */
         .player-container { display: flex; flex-direction: column; align-items: center; }
         .player-label { background: #fff; color: #000; padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; border: 2px solid #333; }
         .player-dot { width: 22px; height: 22px; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         
-        /* 컨트롤러 스타일 */
         #controls { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: repeat(3, 75px); grid-template-rows: repeat(2, 75px); gap: 12px; z-index: 4000; }
         .control-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.3); border: 2px solid white; border-radius: 50%; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; user-select: none; cursor: pointer; }
 
-        /* 문제 창 스타일 */
         .quiz-window { position:absolute; bottom:130px; left: 50%; transform: translateX(-50%); background:white; color:black; padding:15px; display:none; z-index:4500; border-radius:15px; width: 240px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
         .quiz-window b { font-size: 15px; display: block; margin-bottom: 10px; color: #333; }
         .quiz-window input { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 12px; }
         .quiz-window button { padding: 4px 10px; margin-top: 10px; background: #333; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 10px; }
         .ref-link { display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 10px; font-weight: bold; border: 1px solid #3b82f6; padding: 5px 10px; border-radius: 5px; }
 
-        /* ✨ [교체] 미래지향적 Orbit 마커 스타일 */
+        /* Orbit 마커 스타일 */
         .m-wrap { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; }
         .p-3d-scene { width: 50px; height: 50px; perspective: 1000px; transform-style: preserve-3d; }
         .p-3d-body { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; animation: p-floating 4s infinite ease-in-out; }
-
-        /* 중앙 핵: 사용자님이 찾은 황금각도(163도) 적용 */
         .core { position: absolute; top: 15px; left: 25px; transform-style: preserve-3d; animation: p-rot 5s infinite linear; }
         .p-side { position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #00d2ff; transform-origin: 50% 0%; filter: drop-shadow(0 0 5px #00d2ff); }
         .s1 { transform: rotateY(0deg) rotateX(-163deg); border-bottom-color: #00d2ff; }
         .s2 { transform: rotateY(120deg) rotateX(-163deg); border-bottom-color: #3a7bd5; }
         .s3 { transform: rotateY(240deg) rotateX(-163deg); border-bottom-color: #00d2ff; }
-
-        /* 회전하는 이중 고리 */
         .ring { position: absolute; border: 2px solid rgba(0, 210, 255, 0.5); border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 10px rgba(0, 210, 255, 0.3); top: 0; left: 0; right: 0; bottom: 0; margin: auto; }
         .ring-1 { width: 50px; height: 50px; animation: ring-rot-1 3s infinite linear; }
         .ring-2 { width: 38px; height: 38px; animation: ring-rot-2 2.5s infinite linear; border-color: rgba(255, 255, 255, 0.6); }
 
-        /* 애니메이션 */
-        @keyframes p-floating {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
-        }
+        @keyframes p-floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
         @keyframes p-rot { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
         @keyframes ring-rot-1 { 0% { transform: rotateX(75deg) rotateZ(0deg); } 100% { transform: rotateX(75deg) rotateZ(360deg); } }
         @keyframes ring-rot-2 { 0% { transform: rotateY(75deg) rotateZ(0deg); } 100% { transform: rotateY(75deg) rotateZ(360deg); } }
@@ -59,7 +48,7 @@
 
 <div id="login-overlay">
     <h1>안산 3D 실시간 메타버스</h1>
-    <p id="loading-text">V-World 및 시트 데이터 로딩 중...</p>
+    <p id="loading-text">데이터 로딩 중...</p>
     <div id="start-buttons" style="display:none;">
         <button class="login-btn" style="background: #3b82f6; color: white;" onclick="window.startGame(1)">Player1 입장</button>
         <button class="login-btn" style="background: #10b981; color: white;" onclick="window.startGame(2)">Player2 입장</button>
@@ -70,6 +59,7 @@
     <div style="font-weight: bold; border-bottom: 1px solid #555; padding-bottom:5px; margin-bottom:5px;">📊 실시간 스코어</div>
     <div>P1 점수: <span id="score1">0</span></div>
     <div>P2 점수: <span id="score2">0</span></div>
+    <div style="margin-top:5px; font-size:11px; color:#aaa;">조작: 화살표, WASD, 화면 버튼</div>
 </div>
 
 <div id="quiz-box" class="quiz-window">
@@ -83,10 +73,10 @@
 </div>
 
 <div id="controls">
-    <div class="control-btn" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()" style="grid-column:2;">▲</div>
-    <div class="control-btn" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()" style="grid-column:1; grid-row:2;">◀</div>
-    <div class="control-btn" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()" style="grid-column:2; grid-row:2;">▼</div>
-    <div class="control-btn" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()" style="grid-column:3; grid-row:2;">▶</div>
+    <div class="control-btn" id="btn-up" onmousedown="window.startMove('up')" onmouseup="window.stopMove()" ontouchstart="window.startMove('up')" ontouchend="window.stopMove()" style="grid-column:2;">▲</div>
+    <div class="control-btn" id="btn-left" onmousedown="window.startMove('left')" onmouseup="window.stopMove()" ontouchstart="window.startMove('left')" ontouchend="window.stopMove()" style="grid-column:1; grid-row:2;">◀</div>
+    <div class="control-btn" id="btn-down" onmousedown="window.startMove('down')" onmouseup="window.stopMove()" ontouchstart="window.startMove('down')" ontouchend="window.stopMove()" style="grid-column:2; grid-row:2;">▼</div>
+    <div class="control-btn" id="btn-right" onmousedown="window.startMove('right')" onmouseup="window.stopMove()" ontouchstart="window.startMove('right')" ontouchend="window.stopMove()" style="grid-column:3; grid-row:2;">▶</div>
 </div>
 
 <div id="map"></div>
@@ -126,7 +116,7 @@
         zoom: 18, pitch: 60, antialias: true
     });
 
-    let myId = null, moveInterval = null, currentProblem = null, problems = [];
+    let myId = null, moveInterval = null, currentProblem = null, problems = [], activeKeys = new Set();
     let players = {
         1: { pos: { lng: 126.8309, lat: 37.3219 }, marker: null, score: 0 },
         2: { pos: { lng: 126.8329, lat: 37.3219 }, marker: null, score: 0 }
@@ -137,36 +127,21 @@
             const res = await fetch(SHEET_URL + "&cb=" + Date.now());
             const text = await res.text();
             const rows = text.split("\n").map(row => row.split(","));
-            
             for(let i=1; i<rows.length; i++) {
                 const col = rows[i].map(c => c.replace(/"/g, '').trim());
                 if(col.length < 5) continue;
-                
                 const lng = parseFloat(col[1]), lat = parseFloat(col[2]);
                 if(!isNaN(lng) && !isNaN(lat)) {
                     const el = document.createElement("div");
                     el.className = "m-wrap";
-                    /* [교체] 고리와 핵이 합쳐진 HTML 구조 */
-                    el.innerHTML = `
-                        <div class="p-3d-scene">
-                            <div class="p-3d-body">
-                                <div class="ring ring-1"></div>
-                                <div class="ring ring-2"></div>
-                                <div class="core">
-                                    <div class="p-side s1"></div>
-                                    <div class="p-side s2"></div>
-                                    <div class="p-side s3"></div>
-                                </div>
-                            </div>
-                        </div>`;
-                    
+                    el.innerHTML = `<div class="p-3d-scene"><div class="p-3d-body"><div class="ring ring-1"></div><div class="ring ring-2"></div><div class="core"><div class="p-side s1"></div><div class="p-side s2"></div><div class="p-side s3"></div></div></div></div>`;
                     new maplibregl.Marker({element: el, anchor: 'bottom'}).setLngLat([lng, lat]).addTo(map);
                     problems.push({ pos: {lng, lat}, q: col[3], a: col[4], url: col[5] || "", done: false });
                 }
             }
             document.getElementById('loading-text').style.display = 'none';
             document.getElementById('start-buttons').style.display = 'block';
-        } catch (e) { document.getElementById('loading-text').innerText = "데이터 로딩 오류!"; }
+        } catch (e) { document.getElementById('loading-text').innerText = "데이터 오류!"; }
     }
     fetchQuizzes();
 
@@ -196,6 +171,56 @@
         });
     };
 
+    /* ⌨️ 키보드 이벤트 리스너 추가 */
+    const keyMap = {
+        'ArrowUp': 'up', 'w': 'up', 'W': 'up',
+        'ArrowDown': 'down', 's': 'down', 'S': 'down',
+        'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
+        'ArrowRight': 'right', 'd': 'right', 'D': 'right'
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (!myId || document.activeElement.tagName === 'INPUT') return;
+        const dir = keyMap[e.key];
+        if (dir && !activeKeys.has(dir)) {
+            activeKeys.add(dir);
+            updateMovement();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        const dir = keyMap[e.key];
+        if (dir) {
+            activeKeys.delete(dir);
+            updateMovement();
+        }
+    });
+
+    function updateMovement() {
+        if (moveInterval) clearInterval(moveInterval);
+        if (activeKeys.size === 0) return;
+
+        moveInterval = setInterval(() => {
+            let p = players[myId].pos;
+            const step = 0.00003;
+            activeKeys.forEach(dir => {
+                if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
+                if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
+            });
+            update(ref(db, `players/p${myId}`), { lng: p.lng, lat: p.lat });
+        }, 50);
+    }
+
+    /* 🖱️ 화면 버튼 조작용 함수 (기존 유지) */
+    window.startMove = (dir) => {
+        activeKeys.add(dir);
+        updateMovement();
+    };
+    window.stopMove = () => {
+        activeKeys.clear();
+        updateMovement();
+    };
+
     function checkQuizDistance() {
         if(!myId) return;
         problems.forEach(p => {
@@ -206,18 +231,9 @@
                 document.getElementById("quiz-box").style.display = "block";
                 document.getElementById("question-text").innerText = p.q;
                 const urlContainer = document.getElementById("url-container");
-                if(p.url && p.url.startsWith('http')) {
-                    urlContainer.innerHTML = `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>`;
-                } else { urlContainer.innerHTML = ""; }
+                urlContainer.innerHTML = (p.url && p.url.startsWith('http')) ? `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료</a>` : "";
             }
         });
-        if(currentProblem) {
-            const distToCurrent = Math.sqrt(Math.pow(players[myId].pos.lng - currentProblem.pos.lng, 2) + Math.pow(players[myId].pos.lat - currentProblem.pos.lat, 2));
-            if(distToCurrent >= 0.0003) {
-                document.getElementById("quiz-box").style.display = "none";
-                currentProblem = null;
-            }
-        }
     }
 
     window.submitAnswer = function() {
@@ -229,21 +245,9 @@
             currentProblem.done = true;
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
-        } else { alert(`오답입니다!`); }
+        } else { alert(`오답!`); }
         document.getElementById("answer-input").value = "";
     };
-
-    window.startMove = (dir) => {
-        if(moveInterval) clearInterval(moveInterval);
-        moveInterval = setInterval(() => {
-            let p = players[myId].pos;
-            const step = 0.00003;
-            if(dir==='up') p.lat += step; if(dir==='down') p.lat -= step;
-            if(dir==='left') p.lng -= step; if(dir==='right') p.lng += step;
-            update(ref(db, `players/p${myId}`), { lng: p.lng, lat: p.lat });
-        }, 50);
-    };
-    window.stopMove = () => clearInterval(moveInterval);
 </script>
 </body>
 </html>
