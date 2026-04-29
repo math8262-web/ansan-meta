@@ -2,12 +2,15 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 떨림 방지 및 화면 고정판</title>
+    <title>안산 3D 실시간 메타버스 - 떨림 및 포커스 완전 해결판</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
         body { margin:0; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; background: #000; }
         #map { width:100vw; height:100vh; }
+        /* 지도가 키보드 포커스를 가져갔을 때 나타나는 파란 테두리 제거 */
+        .maplibregl-canvas { outline: none !important; }
+        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .login-btn { padding: 15px 40px; margin: 15px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; }
         #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.85); color:white; padding:15px; border-radius:10px; z-index:2000; font-size:14px; border: 1px solid #444; pointer-events: none; }
@@ -113,7 +116,8 @@
             ]
         },
         center: [126.8309, 37.3219],
-        zoom: 18, pitch: 60, antialias: true
+        zoom: 18, pitch: 60, antialias: true,
+        keyboard: false // ✨ 지도의 기본 키보드 조작 기능 비활성화 (충돌 방지)
     });
 
     let myId = null, moveInterval = null, currentProblem = null, problems = [], activeKeys = new Set();
@@ -122,16 +126,10 @@
         2: { pos: { lng: 126.8329, lat: 37.3219 }, marker: null, score: 0 }
     };
 
-    // ✨ 조작 감지 변수
     let isUserInteracting = false;
     let interactionTimer = null;
 
-    // 지도 드래그나 줌이 시작되면 자동 추적 일시중지
-    map.on('movestart', (e) => {
-        if (e.originalEvent) isUserInteracting = true;
-    });
-
-    // 조작이 끝나면 2초 뒤에 다시 자동 추적 모드로 복귀
+    map.on('movestart', (e) => { if (e.originalEvent) isUserInteracting = true; });
     map.on('moveend', (e) => {
         if (e.originalEvent) {
             clearTimeout(interactionTimer);
@@ -176,7 +174,6 @@
         onValue(ref(db, 'players/'), (snap) => {
             const data = snap.val();
             if(!data) return;
-            
             [1, 2].forEach(pId => {
                 if(data[`p${pId}`]) {
                     players[pId].pos = { lng: data[`p${pId}`].lng, lat: data[`p${pId}`].lat };
@@ -186,20 +183,12 @@
                 }
             });
 
-            // ✨ 사용자가 직접 조작 중이 아닐 때만 지도를 플레이어 위치로 이동
             if (!isUserInteracting) {
                 const bounds = new maplibregl.LngLatBounds();
                 bounds.extend([players[1].pos.lng, players[1].pos.lat]);
                 bounds.extend([players[2].pos.lng, players[2].pos.lat]);
-
-                map.fitBounds(bounds, {
-                    padding: 200,
-                    maxZoom: 18,      
-                    duration: 400,    // 떨림 방지를 위해 추적 속도를 약간 부드럽게(400) 조정
-                    essential: true
-                });
+                map.fitBounds(bounds, { padding: 200, maxZoom: 18, duration: 400, essential: true });
             }
-
             checkQuizDistance();
         });
     };
@@ -214,11 +203,18 @@
     window.addEventListener('keydown', (e) => {
         if (!myId || document.activeElement.tagName === 'INPUT') return;
         const dir = keyMap[e.key];
-        if (dir && !activeKeys.has(dir)) {
-            // 키보드 조작 시 사용자의 직접 조작 모드 해제 (자동 추적 강제 활성화)
-            isUserInteracting = false; 
-            activeKeys.add(dir);
-            updateMovement();
+        if (dir) {
+            // ✨ [수정] 키보드 입력 시 지도의 포커스를 강제로 뺏고 기본 동작 차단
+            if (document.activeElement !== document.body) {
+                document.activeElement.blur();
+            }
+            e.preventDefault(); // 방향키로 화면이 스크롤되는 기본 동작 방지
+
+            if (!activeKeys.has(dir)) {
+                isUserInteracting = false; 
+                activeKeys.add(dir);
+                updateMovement();
+            }
         }
     });
 
@@ -233,7 +229,6 @@
     function updateMovement() {
         if (moveInterval) clearInterval(moveInterval);
         if (activeKeys.size === 0) return;
-
         moveInterval = setInterval(() => {
             let p = players[myId].pos;
             const step = 0.00002;
@@ -246,7 +241,7 @@
     }
 
     window.startMove = (dir) => { 
-        isUserInteracting = false; // 버튼 클릭 시에도 자동 추적 활성화
+        isUserInteracting = false; 
         activeKeys.add(dir); 
         updateMovement(); 
     };
@@ -267,7 +262,6 @@
                 urlContainer.innerHTML = (p.url && p.url.startsWith('http')) ? `<a href="${p.url}" target="_blank" class="ref-link">🔗 참고 자료 확인하기</a>` : "";
             }
         });
-        
         if(!isNearAny && currentProblem) {
             document.getElementById("quiz-box").style.display = "none";
             currentProblem = null;
