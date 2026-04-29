@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>안산 3D 실시간 메타버스 - 자동 줌 & 레드 테마 통합판</title>
+    <title>안산 3D 실시간 메타버스 - 화면 이탈 방지 통합판</title>
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet"/>
     <style>
@@ -32,9 +32,9 @@
         .core { position: absolute; top: 15px; left: 25px; transform-style: preserve-3d; animation: p-rot 5s infinite linear; }
         
         .p-side { position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #ff4d4d; transform-origin: 50% 0%; filter: drop-shadow(0 0 5px #ff0000);}
-        .s1 { transform: rotateY(0deg) rotateX(-163deg); border-bottom-color:#ff5f5f; } /* 하이라이트 레드 */
-        .s2 { transform: rotateY(120deg) rotateX(-163deg); border-bottom-color: #e60000; } /* 기본 레드 */
-        .s3 { transform: rotateY(240deg) rotateX(-163deg); border-bottom-color: #b30000; } /* 그림자 레드 */
+        .s1 { transform: rotateY(0deg) rotateX(-163deg); border-bottom-color:#ff5f5f; }
+        .s2 { transform: rotateY(120deg) rotateX(-163deg); border-bottom-color: #e60000; }
+        .s3 { transform: rotateY(240deg) rotateX(-163deg); border-bottom-color: #b30000; }
         
         .ring { position: absolute; border: 3px solid rgba(255, 69, 0, 0.5); border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); top: 0; left: 0; right: 0; bottom: 0; margin: auto; }
         .ring-1 { width: 50px; height: 50px; animation: ring-rot-1 3s infinite linear; }
@@ -162,7 +162,6 @@
             const data = snap.val();
             if(!data) return;
             
-            // 1. 위치 및 점수 업데이트
             [1, 2].forEach(pId => {
                 if(data[`p${pId}`]) {
                     players[pId].pos = { lng: data[`p${pId}`].lng, lat: data[`p${pId}`].lat };
@@ -172,18 +171,17 @@
                 }
             });
 
-            // 2. ✨ [통합 기능] 플레이어 간 거리에 따른 자동 줌
-            if (players[1].pos && players[2].pos) {
-                const bounds = new maplibregl.LngLatBounds()
-                    .extend([players[1].pos.lng, players[1].pos.lat])
-                    .extend([players[2].pos.lng, players[2].pos.lat]);
+            // ✨ [핵심 수정] 플레이어 추적 강화 로직
+            const bounds = new maplibregl.LngLatBounds();
+            bounds.extend([players[1].pos.lng, players[1].pos.lat]);
+            bounds.extend([players[2].pos.lng, players[2].pos.lat]);
 
-                map.fitBounds(bounds, {
-                    padding: 120, // 화면 가장자리 여백
-                    maxZoom: 18, 
-                    duration: 400 // 부드러운 전환 속도
-                });
-            }
+            map.fitBounds(bounds, {
+                padding: 150,     // 여백을 넉넉히 주어 화면 가장자리에서 플레이어가 잘리지 않게 함
+                maxZoom: 18,      
+                duration: 200,    // 지도가 따라오는 시간을 줄여 즉각적으로 반응하게 함
+                essential: true   // 애니메이션이 다른 조작에 의해 방해받지 않도록 설정
+            });
 
             checkQuizDistance();
         });
